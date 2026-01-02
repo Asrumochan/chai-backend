@@ -2,16 +2,26 @@ import mongoose from "mongoose";
 import { DB_NAME, DB_COLLECTION } from "../src/const.js";
 import { MongoClient } from "mongodb";
 
+let userCollection; // Declare at module level to export
+
 const connectDB = async () => {
   try {
     const uri = process.env.MONGODB_URI;
     const client = new MongoClient(uri);
 
-    const userCollection = client.db(DB_NAME).collection(DB_COLLECTION);
+    // Connect to MongoDB
+    await client.connect();
 
-    console.log("Connecting to MongoDB...", uri);
+    userCollection = client.db(DB_NAME).collection(DB_COLLECTION);
+
+    console.log("✅ Connecting to MongoDB...", uri);
     console.log("DB_NAME::", DB_NAME);
     console.log("DB_COLLECTION::", DB_COLLECTION);
+    console.log("✅ MongoDB connected successfully!");
+
+    console.log(await userCollection.find({}).toArray());
+
+    return client; // Return the client for use in your app
     // const connectionInstance = await mongoose.connect(
     //   `${process.env.MONGODB_URI}`
     // );
@@ -25,3 +35,4 @@ const connectDB = async () => {
 };
 
 export default connectDB;
+export { userCollection };
