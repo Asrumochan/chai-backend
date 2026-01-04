@@ -19,8 +19,6 @@ const connectDB = async () => {
     console.log("DB_COLLECTION::", DB_COLLECTION);
     console.log("✅ MongoDB connected successfully!");
 
-    console.log(await userCollection.find({}).toArray());
-
     return client; // Return the client for use in your app
     // const connectionInstance = await mongoose.connect(
     //   `${process.env.MONGODB_URI}`
