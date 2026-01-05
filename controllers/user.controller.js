@@ -2,7 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/AppError.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { userCollection } from "../db/index.js";
+import User from "../models/user.model.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   //collect data from frontend
@@ -16,7 +16,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   // validation for existing user
-  const isExistedUser = await userCollection.findOne({
+  const isExistedUser = await User.findOne({
     $or: [{ email }, { userName }],
   });
 
@@ -42,24 +42,23 @@ const registerUser = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  if (!avatar) {
-    throw new ApiError("Avatar file is required", 400);
+  if (!avatar || !avatar.url) {
+    throw new ApiError("Failed to upload avatar", 500);
   }
 
   //create user object and insert into db
-  const user = await userCollection.insertOne({
+  const user = await User.create({
     fullName,
     userName: userName.toLowerCase(),
     email,
     password,
     avatar: avatar.url,
-    coverImage: coverImage.url ?? "",
+    coverImage: coverImage?.url ?? "",
   });
 
   //CHECK FOR user creation and remove password and refresh token
-  const userCreated = await userCollection.findOne(
-    { _id: user.insertedId },
-    { projection: { password: 0, refreshToken: 0 } }
+  const userCreated = await User.findById(user._id).select(
+    "-password -refreshToken"
   );
 
   if (!userCreated) {
