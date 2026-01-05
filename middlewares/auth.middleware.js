@@ -1,6 +1,7 @@
-import User from "../models/user.model";
-import ApiError from "../utils/AppError";
-import asyncHandler from "../utils/asyncHandler";
+import User from "../models/user.model.js";
+import ApiError from "../utils/AppError.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import jwt from "jsonwebtoken";
 
 export const verifyJWT = asyncHandler(async (req, _, next) => {
   try {
@@ -12,7 +13,7 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     if (!token) {
       throw new ApiError("No token provided", 401);
     }
-
+    
     //extract decoded token from jwt verify
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 

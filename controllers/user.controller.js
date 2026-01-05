@@ -10,11 +10,12 @@ const generateRefreshAndAccessTokens = async (userId) => {
     const accessToken = user.generateAccessToken();
     const refreshToken = user.generateRefreshToken();
 
-    user.refreshToken = accessToken;
+    user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
     return { accessToken, refreshToken };
   } catch (error) {
+     console.error("generateRefreshAndAccessTokens error:", error);
     throw new ApiError("Error generating tokens", 500);
   }
 };
@@ -88,9 +89,8 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   //collect data from req
   const { userName, email, password } = req.body;
-
   //validation for non empty fields
-  if (!userName || !email) {
+  if (!userName && !email) {
     throw new ApiError("All fields are required", 400);
   }
 
@@ -111,7 +111,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   //generate tokens
-  const tokens = await generateRefreshAndAccessTokens(user._id);
+  const { accessToken, refreshToken } = await generateRefreshAndAccessTokens(user._id);
 
   //remove password and refresh token from user object
   const userLoggedIn = await User.findById(user._id).select(
@@ -124,12 +124,18 @@ const loginUser = asyncHandler(async (req, res) => {
   };
 
   return res
-    .send(200)
-    .cookie("refreshToken", tokens.refreshToken, options)
-    .cookie("accessToken", tokens.accessToken, options)
+    .status(200)
+    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, options)
     .json(
-      new ApiResponse(200, { user: userLoggedIn, tokens }, "Login successful")
-    );
+        new ApiResponse(
+            200,
+            {
+                user: userLoggedIn, accessToken, refreshToken
+            },
+            "User logged In Successfully"
+        )
+    )
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
