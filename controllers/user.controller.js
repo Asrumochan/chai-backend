@@ -1,7 +1,7 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/AppError.js";
 import User from "../models/user.model.js";
-import uploadOnCloudinary from "../utils/cloudinary.js";
+import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { OPTIONS } from "../src/const.js";
 import jwt from "jsonwebtoken";
@@ -278,7 +278,12 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   if (!avatar.url) {
     throw new ApiError("Error while uploading in cloudinary");
   }
-
+  
+console.log(req.user.avatar)
+  const deleteAvatar = await deleteFromCloudinary(req.user.avatar)
+  if(!deleteAvatar){
+    throw new ApiError("nooo",400)
+  }
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {

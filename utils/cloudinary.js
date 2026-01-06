@@ -32,5 +32,28 @@ const uploadOnCloudinary = async (localFilePath) => {
     return null;
   }
 };
+const deleteFromCloudinary = async (localFilePath) => {
+  try {
+    if (!localFilePath) {
+      console.log("❌ No file path provided");
+      return null;
+    }
 
-export default uploadOnCloudinary;
+    // Configure cloudinary here to ensure env vars are loaded
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const response = await cloudinary.api.delete_resources(localFilePath, {
+      resource_type: "image",
+    });
+    return response;
+  } catch (error) {
+    console.log(error)
+    return null;
+  }
+};
+
+export {uploadOnCloudinary, deleteFromCloudinary};
