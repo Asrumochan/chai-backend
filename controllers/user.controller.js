@@ -1,5 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/AppError.js";
+import User from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import User from "../models/user.model.js";
@@ -46,10 +47,8 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //check for images
-  console.log("req.files:", req.files); // Debug log
-
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+  const avatarLocalPath = req.files?.avatar[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   //check for avatar is present or not
   if (!avatarLocalPath) {
@@ -85,7 +84,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(200, userCreated, "User registered successfully"));
+    .json(ApiResponse(200, userCreated, "User registered successfully"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
