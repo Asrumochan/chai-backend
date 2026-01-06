@@ -1,8 +1,8 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/AppError.js";
+import User from "../models/user.model.js";
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { userCollection } from "../db/index.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   //collect data from frontend
@@ -16,7 +16,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   // validation for existing user
-  const isExistedUser = await userCollection.findOne({
+  const isExistedUser = await User.findOne({
     $or: [{ email }, { userName }],
   });
 
@@ -28,10 +28,8 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //check for images
-  console.log("req.files:", req.files); // Debug log
-
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+  const avatarLocalPath = req.files?.avatar[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   //check for avatar is present or not
   if (!avatarLocalPath) {
@@ -47,7 +45,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //create user object and insert into db
-  const user = await userCollection.insertOne({
+  const user = await User.create({
     fullName,
     userName: userName.toLowerCase(),
     email,
@@ -57,9 +55,8 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   //CHECK FOR user creation and remove password and refresh token
-  const userCreated = await userCollection.findOne(
-    { _id: user.insertedId },
-    { projection: { password: 0, refreshToken: 0 } }
+  const userCreated = await User.findById(user._id).select(
+    "-password -refreshToken"
   );
 
   if (!userCreated) {
@@ -68,7 +65,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(200, userCreated, "User registered successfully"));
+    .json(ApiResponse(200, userCreated, "User registered successfully"));
 });
 
 export { registerUser };
