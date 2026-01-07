@@ -11,6 +11,7 @@ import {
   updateAccountDetails,
   updateUserCoverImage,
   removeUserCoverImage,
+  getUserChannelProfile,
 } from "../controllers/user.controller.js";
 import upload from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -47,5 +48,7 @@ router
 .route("/update-cover-image")
 .post(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
 router.route("/remove-cover-image").post(verifyJWT, removeUserCoverImage);
+
+router.route("/channel/:username").get(verifyJWT,getUserChannelProfile)
 
 export default router;
