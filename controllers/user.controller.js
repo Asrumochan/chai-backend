@@ -1,7 +1,10 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/AppError.js";
 import User from "../models/user.model.js";
-import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { OPTIONS } from "../src/const.js";
 import jwt from "jsonwebtoken";
@@ -44,7 +47,7 @@ const registerUser = asyncHandler(async (req, res) => {
       409
     );
   }
-
+  console.log(req.files);
   //check for images
   const avatarLocalPath = req.files?.avatar[0]?.path;
   const coverImageLocalPath = req.files?.coverImage[0]?.path;
@@ -68,8 +71,14 @@ const registerUser = asyncHandler(async (req, res) => {
     userName: userName.toLowerCase(),
     email,
     password,
-    avatar: avatar.url,
-    coverImage: coverImage?.url ?? "",
+    avatar: {
+      url: avatar.url,
+      public_id: avatar.public_id,
+    },
+    coverImage: {
+      url: coverImage.url || "",
+      public_id: coverImage.public_id || "",
+    },
   });
 
   //CHECK FOR user creation and remove password and refresh token
@@ -216,8 +225,12 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   //check for old password in DB
   //update the user data with new password
   //update DB and return json response
-
-  const { oldPassword, newPassword } = req.body;
+  console.log(req.body, req.user);
+  const { oldPassword, newPassword } = req.body || {};
+  console.log(oldPassword, newPassword);
+  if (!oldPassword || !newPassword) {
+    throw new ApiError("All fields are required", 400);
+  }
 
   const user = await User.findById(req?.user?._id);
 
@@ -239,7 +252,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(200, req.user, "current user fetched successfully");
+    .json(new ApiResponse(200, req.user, "current user fetched successfully"));
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -249,7 +262,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     3.Retrieves the existing user data from the database using the req.user middleware.
     4.Modifies the user data with the new account details provided.
     5.Returns the updated user information as the response. */
-  const { fullName, email } = req.body;
+
+  const { fullName, email } = req.body || {};
 
   if (!fullName || !email) {
     throw new ApiError("Please enter the required details", 401);
@@ -263,7 +277,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password");
 
-  return res.status(200).json(200, user, "Account details saved");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details saved"));
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
@@ -278,16 +294,20 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   if (!avatar.url) {
     throw new ApiError("Error while uploading in cloudinary");
   }
-  
-console.log(req.user.avatar)
-  const deleteAvatar = await deleteFromCloudinary(req.user.avatar)
-  if(!deleteAvatar){
-    throw new ApiError("nooo",400)
+
+  if (req.user?.avatar.public_id) {
+    await deleteFromCloudinary(req.user.avatar.public_id);
   }
+
+  let avatarObj = {
+    url: avatar.url,
+    public_id: avatar.public_id,
+  };
+
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set: { avatar: avatar.url },
+      $set: { avatar: avatarObj },
     },
     { new: true }
   ).select("-password");
@@ -295,6 +315,31 @@ console.log(req.user.avatar)
   res
     .status(200)
     .json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
+
+const removeUserAvatar = asyncHandler(async (req, res) => {
+  if (!req.user?.avatar.public_id) {
+    // nothing to remove
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "No avatar to remove"));
+  }
+  console.log(req.user.avatar);
+  const deleteResult = await deleteFromCloudinary(req.user?.avatar.public_id);
+
+  if (!deleteResult) {
+    throw new ApiError("Unable to delete the current avatar", 500);
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { avatar: { url: "", public_id: "" } } },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "Avatar removed successfully"));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -310,17 +355,48 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError("Error while uploading in cloudinary");
   }
 
+  let coverImageObj = {
+    url: coverImage.url,
+    public_id: coverImage.public_id,
+  };
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set: { coverImage: coverImage.url },
+      $set: { coverImage: coverImageObj },
     },
     { new: true }
-  ).select("-password");
+  ).select("-password -refreshToken");
 
   res
     .status(200)
     .json(new ApiResponse(200, user, "CoverImage updated successfully"));
+});
+
+const removeUserCoverImage = asyncHandler(async (req, res) => {
+  if (!req.user?.coverImage.public_id) {
+    // nothing to remove
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "No avatar to remove"));
+  }
+
+  const deleteResult = await deleteFromCloudinary(
+    req.user?.coverImage.public_id
+  );
+
+  if (!deleteResult) {
+    throw new ApiError("Unable to delete coverImage");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { coverImage: { url: "", public_id: "" } } },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "Successfully deleted coverImage"));
 });
 
 export {
@@ -332,5 +408,7 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateUserCoverImage
+  updateUserCoverImage,
+  removeUserAvatar,
+  removeUserCoverImage,
 };
